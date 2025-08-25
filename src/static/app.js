@@ -20,11 +20,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const spotsLeft = details.max_participants - details.participants.length;
 
+        const participantsList = details.participants.length > 0 
+          ? `<ul class="participants-list">${details.participants.map(email => `<li>${email}</li>`).join('')}</ul>`
+          : '<p class="no-participants">Noch keine Teilnehmer angemeldet</p>';
+
         activityCard.innerHTML = `
           <h4>${name}</h4>
-          <p>${details.description}</p>
-          <p><strong>Schedule:</strong> ${details.schedule}</p>
-          <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
+          <p><strong>Beschreibung:</strong> ${details.description}</p>
+          <p><strong>Zeitplan:</strong> ${details.schedule}</p>
+          <p><strong>Max. Teilnehmer:</strong> ${details.max_participants}</p>
+          <div class="participants-section">
+              <p><strong>Angemeldete Teilnehmer (${details.participants.length}/${details.max_participants}):</strong></p>
+              ${participantsList}
+          </div>
         `;
 
         activitiesList.appendChild(activityCard);
@@ -48,31 +56,31 @@ document.addEventListener("DOMContentLoaded", () => {
     const email = document.getElementById("email").value;
     const activity = document.getElementById("activity").value;
 
+    if (!email || !activity) {
+      showMessage('Bitte alle Felder ausfüllen.', 'error');
+      return;
+    }
+
     try {
       const response = await fetch(
-        `/activities/${encodeURIComponent(activity)}/signup?email=${encodeURIComponent(email)}`,
+        `/activities/${encodeURIComponent(activity)}/signup`,
         {
           method: "POST",
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email: email })
         }
       );
 
-      const result = await response.json();
-
       if (response.ok) {
-        messageDiv.textContent = result.message;
-        messageDiv.className = "success";
+        showMessage('Erfolgreich angemeldet!', 'success');
         signupForm.reset();
+        fetchActivities(); // Reload to show updated participant list
       } else {
-        messageDiv.textContent = result.detail || "An error occurred";
-        messageDiv.className = "error";
+        const error = await response.json();
+        showMessage(error.detail || 'Anmeldung fehlgeschlagen.', 'error');
       }
-
-      messageDiv.classList.remove("hidden");
-
-      // Hide message after 5 seconds
-      setTimeout(() => {
-        messageDiv.classList.add("hidden");
-      }, 5000);
     } catch (error) {
       messageDiv.textContent = "Failed to sign up. Please try again.";
       messageDiv.className = "error";
@@ -84,3 +92,14 @@ document.addEventListener("DOMContentLoaded", () => {
   // Initialize app
   fetchActivities();
 });
+
+function showMessage(text, type) {
+  const messageDiv = document.getElementById('message');
+  messageDiv.textContent = text;
+  messageDiv.className = `message ${type}`;
+  messageDiv.classList.remove('hidden');
+
+  setTimeout(() => {
+      messageDiv.classList.add('hidden');
+  }, 5000);
+}
